@@ -349,12 +349,12 @@ def build_leaderboard(records: list[dict]) -> pd.DataFrame:
                 "Name",
                 "Games Played",
                 "Daily Wins",
+                "Final",
                 "Round 1",
                 "Round 2",
                 "Round 3",
                 "Round 4",
                 "Round 5",
-                "Final",
             ]
         )
 
@@ -387,44 +387,44 @@ def build_leaderboard(records: list[dict]) -> pd.DataFrame:
             "Name",
             "games_played",
             "daily_wins",
+            "final_avg",
             "r1_avg",
             "r2_avg",
             "r3_avg",
             "r4_avg",
             "r5_avg",
-            "final_avg",
         ]
     ].rename(
         columns={
             "games_played": "Games Played",
             "daily_wins": "Daily Wins",
+            "final_avg": "Final",
             "r1_avg": "Round 1",
             "r2_avg": "Round 2",
             "r3_avg": "Round 3",
             "r4_avg": "Round 4",
             "r5_avg": "Round 5",
-            "final_avg": "Final",
         }
     )
 
     leaderboard[["Games Played", "Daily Wins"]] = leaderboard[["Games Played", "Daily Wins"]].astype(int)
     leaderboard[
         [
+            "Final",
             "Round 1",
             "Round 2",
             "Round 3",
             "Round 4",
             "Round 5",
-            "Final",
         ]
     ] = leaderboard[
         [
+            "Final",
             "Round 1",
             "Round 2",
             "Round 3",
             "Round 4",
             "Round 5",
-            "Final",
         ]
     ].round(2)
 
@@ -530,7 +530,9 @@ def write_markdown(leaderboard: pd.DataFrame, path: Path) -> None:
 
 
 def write_html(leaderboard: pd.DataFrame, path: Path) -> None:
-    final_col_idx = max(len(leaderboard.columns) - 1, 0)
+    final_col_idx = (
+        leaderboard.columns.get_loc("Final") if "Final" in leaderboard.columns else max(len(leaderboard.columns) - 1, 0)
+    )
     header_cells = "\n".join(
         (
             f'      <th class="final-col">{html.escape(str(col))}</th>'
