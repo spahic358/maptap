@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime
+import html
 import re
 from pathlib import Path
 
@@ -14,6 +15,7 @@ INPUT_FILE = BASE_DIR / "TapMap.pdf"
 OUTPUT_FILE = BASE_DIR / "leaderboard.csv"
 EXCEL_OUTPUT_FILE = BASE_DIR / "leaderboard.xlsx"
 MARKDOWN_OUTPUT_FILE = BASE_DIR / "leaderboard.md"
+HTML_OUTPUT_FILE = BASE_DIR / "tapmap-leaderboard.html"
 START_DATE = datetime.date(2026, 3, 16)
 RIGHT_SIDE_INDENT = 60
 
@@ -347,12 +349,12 @@ def build_leaderboard(records: list[dict]) -> pd.DataFrame:
                 "Name",
                 "Games Played",
                 "Daily Wins",
-                "Round 1 Avg",
-                "Round 2 Avg",
-                "Round 3 Avg",
-                "Round 4 Avg",
-                "Round 5 Avg",
-                "Final Avg",
+                "Round 1",
+                "Round 2",
+                "Round 3",
+                "Round 4",
+                "Round 5",
+                "Final",
             ]
         )
 
@@ -396,33 +398,33 @@ def build_leaderboard(records: list[dict]) -> pd.DataFrame:
         columns={
             "games_played": "Games Played",
             "daily_wins": "Daily Wins",
-            "r1_avg": "Round 1 Avg",
-            "r2_avg": "Round 2 Avg",
-            "r3_avg": "Round 3 Avg",
-            "r4_avg": "Round 4 Avg",
-            "r5_avg": "Round 5 Avg",
-            "final_avg": "Final Avg",
+            "r1_avg": "Round 1",
+            "r2_avg": "Round 2",
+            "r3_avg": "Round 3",
+            "r4_avg": "Round 4",
+            "r5_avg": "Round 5",
+            "final_avg": "Final",
         }
     )
 
     leaderboard[["Games Played", "Daily Wins"]] = leaderboard[["Games Played", "Daily Wins"]].astype(int)
     leaderboard[
         [
-            "Round 1 Avg",
-            "Round 2 Avg",
-            "Round 3 Avg",
-            "Round 4 Avg",
-            "Round 5 Avg",
-            "Final Avg",
+            "Round 1",
+            "Round 2",
+            "Round 3",
+            "Round 4",
+            "Round 5",
+            "Final",
         ]
     ] = leaderboard[
         [
-            "Round 1 Avg",
-            "Round 2 Avg",
-            "Round 3 Avg",
-            "Round 4 Avg",
-            "Round 5 Avg",
-            "Final Avg",
+            "Round 1",
+            "Round 2",
+            "Round 3",
+            "Round 4",
+            "Round 5",
+            "Final",
         ]
     ].round(2)
 
@@ -527,6 +529,178 @@ def write_markdown(leaderboard: pd.DataFrame, path: Path) -> None:
     path.write_text(content, encoding="utf-8")
 
 
+def write_html(leaderboard: pd.DataFrame, path: Path) -> None:
+    final_col_idx = max(len(leaderboard.columns) - 1, 0)
+    header_cells = "\n".join(
+        (
+            f'      <th class="final-col">{html.escape(str(col))}</th>'
+            if col_idx == final_col_idx
+            else f"      <th>{html.escape(str(col))}</th>"
+        )
+        for col_idx, col in enumerate(leaderboard.columns)
+    )
+
+    if leaderboard.empty:
+        body_rows = '      <tr><td colspan="10">No games found yet.</td></tr>'
+    else:
+        row_lines: list[str] = []
+        for row_idx, row in enumerate(leaderboard.itertuples(index=False), start=1):
+            class_name = "rank-top" if row_idx == 1 else "rank-med" if row_idx == 2 else "rank-low" if row_idx == 3 else ""
+            cells = []
+            for col_idx, value in enumerate(row):
+                if col_idx == final_col_idx:
+                    cells.append(f'        <td class="final-col">{html.escape(_fmt_md(value))}</td>')
+                else:
+                    cells.append(f'        <td>{html.escape(_fmt_md(value))}</td>')
+            body_rows = "\n".join(
+                [
+                    "    <tr" + (f' class="{class_name}"' if class_name else "") + ">",
+                    *cells,
+                    "    </tr>",
+                ]
+            )
+            row_lines.append(body_rows)
+        body_rows = "\n".join(row_lines)
+
+    content = f"""<!doctype html>
+<html lang=\"en\">
+  <head>
+    <meta charset=\"UTF-8\" />
+    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
+    <title>MapTap Leaderboard</title>
+    <style>
+      :root {{
+        --bg: #0f1120;
+        --panel: #171a2c;
+        --panel-soft: #1f2440;
+        --text: #e9eeff;
+        --muted: #a9b0d0;
+        --line: #2e3765;
+        --accent-1: #6ff7ff;
+        --accent-2: #ffd166;
+        --accent-3: #8de969;
+      }}
+      * {{ box-sizing: border-box; }}
+      body {{
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Inter", "Segoe UI", Arial, sans-serif;
+        background:
+          radial-gradient(circle at 18% 15%, rgba(111, 247, 255, 0.15), transparent 42%),
+          radial-gradient(circle at 82% 8%, rgba(141, 233, 105, 0.14), transparent 36%),
+          var(--bg);
+        color: var(--text);
+      }}
+      .wrap {{
+        max-width: 980px;
+        margin: 24px auto;
+        padding: 10px 16px 24px;
+      }}
+      .card {{
+        background: linear-gradient(140deg, rgba(23, 26, 44, 0.96), rgba(21, 25, 47, 0.9));
+        border: 1px solid rgba(120, 130, 190, 0.28);
+        border-radius: 16px;
+        box-shadow: 0 12px 45px rgba(0, 0, 0, 0.35);
+        padding: 16px 16px 18px;
+      }}
+      h1 {{
+        margin: 6px 4px 2px;
+        font-size: clamp(1.45rem, 3.5vw, 2rem);
+        letter-spacing: 0.2px;
+      }}
+      .meta {{
+        margin: 2px 4px 16px;
+        color: var(--muted);
+        font-size: 0.95rem;
+      }}
+      .table-wrap {{
+        width: 100%;
+        overflow-x: auto;
+      }}
+      table {{
+        width: 100%;
+        table-layout: auto;
+        border-collapse: collapse;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        overflow: hidden;
+        font-size: 0.86rem;
+      }}
+      thead tr {{
+        background: linear-gradient(90deg, #24305e 0%, #1a2450 100%);
+      }}
+      th, td {{
+        text-align: center;
+        padding: 8px 7px;
+        border-bottom: 1px solid var(--line);
+        white-space: nowrap;
+      }}
+      th {{
+        font-weight: 700;
+        font-size: 0.92rem;
+        letter-spacing: 0.2px;
+      }}
+      tbody tr {{
+        transition: background-color 0.2s ease;
+      }}
+      tbody tr:nth-child(even) {{ background: rgba(255, 255, 255, 0.02); }}
+      tbody tr:hover {{ background: rgba(111, 247, 255, 0.08); }}
+      tr.rank-top td:first-child {{ background: rgba(255, 209, 102, 0.16); }}
+      tr.rank-med td:first-child {{ background: rgba(111, 247, 255, 0.16); }}
+      tr.rank-low td:first-child {{ background: rgba(141, 233, 105, 0.16); }}
+      th.final-col,
+      td.final-col {{
+        color: #b5ffb9;
+        font-weight: 700;
+        box-shadow: inset 0 0 0 1px rgba(141, 233, 105, 0.45);
+        background: rgba(141, 233, 105, 0.15);
+      }}
+      td:first-child {{ font-weight: 700; }}
+      @media (max-width: 860px) {{
+        .wrap {{ padding: 10px; margin: 12px auto; }}
+        .card {{ padding: 12px 10px 14px; }}
+        table, th, td {{ font-size: 0.79rem; }}
+        th, td {{ padding: 8px 6px; }}
+      }}
+      @media print {{
+        body {{
+          background: white;
+          color: black;
+        }}
+        .card {{
+          box-shadow: none;
+          border: none;
+        }}
+        table {{ border-color: #666; }}
+        th, td {{ border-color: #666; color: #111; }}
+        thead tr {{ background: #efefef; }}
+      }}
+    </style>
+  </head>
+  <body>
+    <main class=\"wrap\">
+      <section class=\"card\">
+        <h1>MapTap Leaderboard</h1>
+        <div class=\"meta\">Generated: {_generated_at()}</div>
+        <div class=\"table-wrap\">
+        <table aria-label=\"MapTap leaderboard\">
+          <thead>
+            <tr>
+{header_cells}
+            </tr>
+          </thead>
+          <tbody>
+{body_rows}
+          </tbody>
+        </table>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
+"""
+    path.write_text(content, encoding="utf-8")
+
 
 def main() -> None:
     if not INPUT_FILE.exists():
@@ -537,10 +711,12 @@ def main() -> None:
     leaderboard.to_csv(OUTPUT_FILE, index=False)
     wrote_xlsx = write_excel(leaderboard, EXCEL_OUTPUT_FILE)
     write_markdown(leaderboard, MARKDOWN_OUTPUT_FILE)
+    write_html(leaderboard, HTML_OUTPUT_FILE)
 
     print(leaderboard.to_string(index=False))
     print(f"\nSaved: {OUTPUT_FILE}")
     print(f"Saved: {MARKDOWN_OUTPUT_FILE}")
+    print(f"Saved: {HTML_OUTPUT_FILE}")
     if wrote_xlsx:
         print(f"Saved: {EXCEL_OUTPUT_FILE}")
 

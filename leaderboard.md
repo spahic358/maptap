@@ -1,7 +1,7 @@
 # MapTap Leaderboard
-Generated: 2026-03-18 06:10:08 CDT-0500
+Generated: 2026-03-18 06:31:59 CDT-0500
 
-| Rank | Name | Games Played | Daily Wins | Round 1 Avg | Round 2 Avg | Round 3 Avg | Round 4 Avg | Round 5 Avg | Final Avg |
+| Rank | Name | Games Played | Daily Wins | Round 1 | Round 2 | Round 3 | Round 4 | Round 5 | Final |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 1 | Alma | 3 | 1 | 97.33 | 97.33 | 96.33 | 92.67 | 77 | 896.33 |
 | 2 | Matt | 3 | 0 | 96 | 96.33 | 94.67 | 84 | 32.33 | 892.67 |
