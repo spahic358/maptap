@@ -1,4 +1,4 @@
-"""Build a MapTap leaderboard from an exported iMessage group chat PDF."""
+"""Build a MapTap leaderboard from an exported iMessage group chat TXT file."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ import pandas as pd
 
 
 BASE_DIR = Path(__file__).resolve().parent
-INPUT_FILE = BASE_DIR / "TapMap.pdf"
+INPUT_FILE = BASE_DIR / "TapMap - 605.txt"
 OUTPUT_FILE = BASE_DIR / "leaderboard.csv"
 EXCEL_OUTPUT_FILE = BASE_DIR / "leaderboard.xlsx"
 MARKDOWN_OUTPUT_FILE = BASE_DIR / "leaderboard.md"
@@ -28,6 +28,9 @@ NAME_MAP = {
     "Cooper": "Cooper",
     "Cooper Cooper": "Cooper",
     "CooperCooper": "Cooper",
+    "You": "Alma",
+    "ME": "Alma",
+    "Me": "Alma",
     "Ben": "Ben",
     "Ben Awad": "Ben",
     "BenAwad": "Ben",
@@ -179,26 +182,23 @@ def _resolve_name(raw_name: str) -> str | None:
 
 
 def _read_messages(path: Path) -> list[tuple[str, int, bool]]:
+    # iMessage TXT export format: one logical line per message row.
     try:
-        from pypdf import PdfReader
-    except ModuleNotFoundError:
-        raise SystemExit("Missing dependency: pypdf. Install with `python3 -m pip install pypdf`.")
+        raw_text = path.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        try:
+            raw_text = path.read_text(encoding="utf-8-sig")
+        except UnicodeDecodeError:
+            raw_text = path.read_text(encoding="latin-1", errors="replace")
 
-    try:
-        reader = PdfReader(str(path))
-    except Exception as exc:
-        raise SystemExit(f"Unable to open PDF: {path} ({exc})")
+    raw_text = raw_text.replace("\r\n", "\n").replace("\r", "\n")
 
     lines: list[tuple[str, int, bool]] = []
-    for page in reader.pages:
-        page_text = page.extract_text(extraction_mode="layout") or ""
-        page_text = page_text.replace("\r\n", "\n").replace("\r", "\n")
-        for raw_line in page_text.split("\n"):
-            if not raw_line.strip():
-                continue
-            indent = _line_indent(raw_line)
-            is_right = indent >= RIGHT_SIDE_INDENT
-            lines.append((raw_line.strip(), indent, is_right))
+    for raw_line in raw_text.split("\n"):
+        if not raw_line.strip():
+            continue
+        indent = _line_indent(raw_line)
+        lines.append((raw_line.strip(), indent, False))
     return lines
 
 
@@ -706,7 +706,7 @@ def write_html(leaderboard: pd.DataFrame, path: Path) -> None:
 
 def main() -> None:
     if not INPUT_FILE.exists():
-        raise SystemExit(f"Input file not found: {INPUT_FILE} (expected TapMap.pdf)")
+        raise SystemExit(f"Input file not found: {INPUT_FILE} (expected TapMap - 605.txt)")
 
     records = parse_records(INPUT_FILE)
     leaderboard = build_leaderboard(records)
